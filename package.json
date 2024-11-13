@@ -1,0 +1,53 @@
+{
+  "name": "@exortek/express-mongo-sanitize",
+  "version": "1.0.0-beta.1",
+  "description": "A comprehensive Express middleware designed to protect your No(n)SQL queries from injection attacks by sanitizing request data. This middleware provides flexible sanitization options for request bodies, parameters, and query strings.",
+  "main": "index.js",
+  "type": "commonjs",
+  "types": "types/index.d.ts",
+  "scripts": {
+    "format": "prettier --write \"**/*.{js,ts,json}\"",
+    "test:tsd": "tsd",
+    "test:node": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ExorTek/express-mongo-sanitize.git"
+  },
+  "keywords": [
+    "express",
+    "mongodb",
+    "sanitize",
+    "mongoose",
+    "express-middleware",
+    "data-validation",
+    "input-sanitization",
+    "security",
+    "web-application",
+    "nodejs",
+    "typescript",
+    "middleware",
+    "api-security",
+    "query-sanitization",
+    "no-sql",
+    "mongodb-sanitizer"
+  ],
+  "author": "ExorTek - https://github.com/ExorTek",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ExorTek/express-mongo-sanitize/issues"
+  },
+  "homepage": "https://github.com/ExorTek/express-mongo-sanitize#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "packageManager": "yarn@4.5.1",
+  "devDependencies": {
+    "express": "^4.21.1",
+    "prettier": "^3.3.3"
+  },
+  "files": [
+    "index.js",
+    "types/index.d.ts"
+  ]
+}
