@@ -17,9 +17,9 @@ const PATTERNS = Object.freeze([
  * @constant {Object}
  */
 const DEFAULT_OPTIONS = Object.freeze({
-  app: null, // The Express app instance. Default is null. You can specify the app instance if you want to sanitize the request objects globally.
-  router: null, // The Express router instance. Default is null. You can specify the router instance if you want to sanitize the request objects for a specific router.
-  routerBasePath: 'api', // The base path of the router. Default is an empty string. You can specify the base path of the router if you want to sanitize the path variables.
+  app: null, // The Express app instance. Default is null. You can specify the app instance if you want to sanitize the params(Path variables) of the app.
+  router: null, // The Express router instance. Default is null. You can specify the router instance if you want to sanitize the params(Path variables) of the router.
+  routerBasePath: 'api', // The base path of the router. Default is an 'api'. You can specify the base path of the router.
   replaceWith: '', // The string to replace the matched patterns with. Default is an empty string. If you want to replace the matched patterns with a different string, you can set this option.
   removeMatches: false, // Remove the matched patterns. Default is false. If you want to remove the matched patterns instead of replacing them, you can set this option to true.
   sanitizeObjects: ['body', 'params', 'query'], // The request properties to sanitize. Default is ['body', 'params', 'query']. You can specify any request property that you want to sanitize. It must be an object.
@@ -87,7 +87,7 @@ const isArray = (value) => Array.isArray(value);
  * @param {*} value - Value to check
  * @returns {boolean} True if value is primitive
  */
-const isPrimitive = (value) => value === null || ['number', 'boolean'].includes(typeof value);
+const isPrimitive = (value) => value == null || typeof value === 'boolean' || typeof value === 'number';
 
 /**
  * Checks if value is a Date object
@@ -241,7 +241,7 @@ const validateOptions = (options) => {
 
   for (const [key, validate] of Object.entries(validators)) {
     if (!validate(options[key])) {
-      throw new ExpressMongoSanitizeError(`Invalid configuration: ${key}`, 'type_error');
+      throw new ExpressMongoSanitizeError(`Invalid configuration: "${key}" with value "${options[key]}"`, 'type_error');
     }
   }
 };
@@ -260,7 +260,7 @@ const handleRequest = (request, options) => {
       const originalRequest = Object.assign({}, requestObject);
 
       request[sanitizeObject] = customSanitizer
-        ? customSanitizer(originalRequest)
+        ? customSanitizer(originalRequest, options)
         : sanitizeValue(originalRequest, options);
     }
 
@@ -276,7 +276,8 @@ const handleRequest = (request, options) => {
  */
 const getAllRouteParams = (stack, basePath) => {
   const uniqueParams = new Set();
-  const pathStack = [{ currentStack: stack, basePath: basePath }];
+  const pathStack = [{ currentStack: stack, basePath }];
+  const cache = new Map();
 
   while (pathStack.length > 0) {
     const { currentStack, basePath } = pathStack.pop();
@@ -284,14 +285,24 @@ const getAllRouteParams = (stack, basePath) => {
     for (let i = 0; i < currentStack.length; i++) {
       const middleware = currentStack[i];
 
+      if (cache.has(middleware)) {
+        const cachedPath = cache.get(middleware);
+        if (cachedPath) uniqueParams.add(...cachedPath);
+        continue;
+      }
+
       if (middleware.route) {
         const routePath = basePath + middleware.route.path;
         const paramRegex = /:([^/]+)/g;
+        const params = [];
         let paramMatch;
 
         while ((paramMatch = paramRegex.exec(routePath))) {
+          params.push(paramMatch[1]);
           uniqueParams.add(paramMatch[1]);
         }
+
+        cache.set(middleware, params);
       } else if (middleware.name === 'router' && middleware.handle?.stack) {
         let newBasePath = '';
 
@@ -303,15 +314,14 @@ const getAllRouteParams = (stack, basePath) => {
             newBasePath = match[1].replace(/\\\//g, '/');
           }
         }
-
         pathStack.push({
           currentStack: middleware.handle.stack,
           basePath: basePath + newBasePath,
         });
+        cache.set(middleware, null);
       }
     }
   }
-
   return [...uniqueParams];
 };
 
@@ -340,6 +350,16 @@ const expressMongoSanitize = (options = {}) => {
 
   const { mode, app, router, routerBasePath } = opts;
 
+  if (!app)
+    createColorizedWarningMessage(
+      'ExpressMongoSanitizer: You must provide an Express app instance to sanitize route parameters. Skipping route parameter sanitization.'
+    );
+
+  if (!router)
+    createColorizedWarningMessage(
+      'ExpressMongoSanitizer: You must provide an Express router instance to sanitize route parameters. Skipping route parameter sanitization.'
+    );
+
   return (req, res, next) => {
     if (opts.skipRoutes.has(req.url)) return next();
 
@@ -349,10 +369,7 @@ const expressMongoSanitize = (options = {}) => {
         req.params[name] = sanitizeString(value, opts);
         next();
       });
-    } else
-      createColorizedWarningMessage(
-        'ExpressMongoSanitizer: You must provide an Express app instance to sanitize route parameters. Skipping route parameter sanitization.'
-      );
+    }
 
     if (router) {
       const allRouteParams = getAllRouteParams(app._router.stack, routerBasePath);
@@ -363,10 +380,7 @@ const expressMongoSanitize = (options = {}) => {
           next();
         });
       }
-    } else
-      createColorizedWarningMessage(
-        'ExpressMongoSanitizer: You must provide an Express router instance to sanitize route parameters. Skipping route parameter sanitization.'
-      );
+    }
 
     if (mode === 'auto') {
       handleRequest(req, opts);
