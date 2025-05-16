@@ -1,4 +1,4 @@
-import type { Application, Router, Handler } from 'express';
+import type { Application, Handler } from 'express';
 
 export type SanitizeMode = 'auto' | 'manual';
 export type SanitizeObject = 'body' | 'params' | 'query';
@@ -16,9 +16,7 @@ export interface ArraySanitizeOptions {
 
 export interface ExpressMongoSanitizeOptions {
   /** Express application instance */
-  app?: Application | null;
-  /** Express router instance */
-  router?: Router | null;
+  app: Application;
   /** Base path for the router */
   routerBasePath?: string | 'api';
   /** String to replace matched patterns with */
