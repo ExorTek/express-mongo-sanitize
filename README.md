@@ -45,7 +45,7 @@ const app = express();
 app.use(exppress.json());
 
 // Register the middleware
-app.use(expressMongoSanitize());
+app.use(expressMongoSanitize({ app })); // app instance is passed to the middleware
 
 // Define your routes
 app.get('/users', (req, res) => {
@@ -75,7 +75,7 @@ const app = express();
 app.use(express.json());
 
 // Register the middleware
-app.use(expressMongoSanitize());
+app.use(expressMongoSanitize({ app })); // app instance is passed to the middleware
 
 // Define your routes
 app.use('/api', router);
@@ -97,7 +97,6 @@ options:
 | Option            | Type           | Default                                            | Description                                                                                                                                                                                                                                                                               |
 |-------------------|----------------|----------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `app`             | Application    | `null`                                             | The Express app instance. Default is null. You can specify the app instance if you want to sanitize the params(Path variables) of the app.                                                                                                                                                |
-| `router`          | Router         | `null`                                             | The Express router instance. Default is null. You can specify the router instance if you want to sanitize the params(Path variables) of the router.                                                                                                                                       |
 | `routerBasePath`  | string         | `api`                                              | // The base path of the router. Default is an 'api'. You can specify the base path of the router.                                                                                                                                                                                         |
 | `replaceWith`     | string         | `''`                                               | The string to replace the matched patterns with. Default is an empty string. If you want to replace the matched patterns with a different string, you can set this option.                                                                                                                |
 | `removeMatches`   | boolean        | `false`                                            | Remove the matched patterns. Default is false. If you want to remove the matched patterns instead of replacing them, you can set this option to true.                                                                                                                                     |
@@ -143,7 +142,6 @@ Here's an example of how you can configure the middleware with custom options:
 ```javascript
 app.use(expressMongoSanitize({
     app: app,
-    router: router,
     routerBasePath: 'api',
     replaceWith: 'REPLACED',
     removeMatches: false,
