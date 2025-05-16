@@ -3,7 +3,7 @@ import expressMongoSanitize, { ExpressMongoSanitizeOptions, ExpressMongoSanitize
 
 declare const app: Application;
 
-app.use(expressMongoSanitize());
+app.use(expressMongoSanitize({ app }));
 
 app.use(
   expressMongoSanitize({
