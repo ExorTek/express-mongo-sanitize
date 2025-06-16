@@ -1,62 +1,80 @@
-import type { Application, Router, Handler } from 'express';
+import { RequestHandler, RequestParamHandler } from 'express';
 
-export type SanitizeMode = 'auto' | 'manual';
-export type SanitizeObject = 'body' | 'params' | 'query';
-
-export interface StringSanitizeOptions {
+/**
+ * String-specific sanitizer options.
+ */
+export interface StringOptions {
+  /** Trim whitespace from strings */
   trim?: boolean;
+  /** Convert strings to lowercase */
   lowercase?: boolean;
+  /** Truncate strings to a maximum length (null = unlimited) */
   maxLength?: number | null;
 }
 
-export interface ArraySanitizeOptions {
+/**
+ * Array-specific sanitizer options.
+ */
+export interface ArrayOptions {
+  /** Remove null values from arrays */
   filterNull?: boolean;
+  /** Remove duplicate values from arrays */
   distinct?: boolean;
 }
 
+export interface DebugOptions {
+  /** Enable debug logging */
+  enabled?: boolean;
+  /** Log level (e.g., 'silent' | 'error' | 'warn' | 'info' | 'debug' | 'trace') */
+  level?: string;
+}
+
+/**
+ * Main options for expressMongoSanitize middleware.
+ */
 export interface ExpressMongoSanitizeOptions {
-  /** Express application instance */
-  app?: Application | null;
-  /** Express router instance */
-  router?: Router | null;
-  /** Base path for the router */
-  routerBasePath?: string | 'api';
   /** String to replace matched patterns with */
   replaceWith?: string;
-  /** Whether to remove matches instead of replacing them */
+  /** Remove values matching patterns */
   removeMatches?: boolean;
-  /** Request objects to sanitize */
-  sanitizeObjects?: SanitizeObject[];
-  /** Sanitization mode */
-  mode?: SanitizeMode;
-  /** Routes to skip sanitization */
+  /** Request objects to sanitize (default: ['body', 'query']) */
+  sanitizeObjects?: Array<'body' | 'query'>;
+  /** Automatic or manual mode */
+  mode?: 'auto' | 'manual';
+  /** Paths to skip sanitizing */
   skipRoutes?: string[];
-  /** Custom sanitizer function */
-  customSanitizer?: ((data: unknown, options: ExpressMongoSanitizeOptions) => unknown) | null;
-  /** Whether to recursively sanitize nested objects */
+  /** Completely custom sanitizer function */
+  customSanitizer?: (data: any, options: ExpressMongoSanitizeOptions) => any;
+  /** Recursively sanitize nested objects */
   recursive?: boolean;
-  /** Whether to remove empty values after sanitization */
+  /** Remove empty values after sanitizing */
   removeEmpty?: boolean;
   /** Patterns to match for sanitization */
   patterns?: RegExp[];
-  /** Allowed keys in objects */
-  allowedKeys?: string[] | null;
-  /** Denied keys in objects */
-  deniedKeys?: string[] | null;
-  /** String sanitization options */
-  stringOptions?: StringSanitizeOptions;
-  /** Array sanitization options */
-  arrayOptions?: ArraySanitizeOptions;
+  /** Only allow these keys in sanitized objects */
+  allowedKeys?: string[];
+  /** Remove these keys from sanitized objects */
+  deniedKeys?: string[];
+  /** String sanitizer options */
+  stringOptions?: StringOptions;
+  /** Array sanitizer options */
+  arrayOptions?: ArrayOptions;
+  /** Debugging options */
+  debug?: DebugOptions;
 }
 
-declare class ExpressMongoSanitizeError extends Error {
-  constructor(message: string, type?: string);
-  message: string;
-  type: string;
-}
+/**
+ * Middleware for automatic sanitization of request objects.
+ */
+declare function expressMongoSanitize(options?: ExpressMongoSanitizeOptions): RequestHandler;
 
-declare const expressMongoSanitize: (options?: ExpressMongoSanitizeOptions) => Handler;
+/**
+ * Middleware for sanitizing individual route parameters.
+ */
+declare function paramSanitizeHandler(options?: ExpressMongoSanitizeOptions): RequestParamHandler;
 
+/**
+ * Main export for express-mongo-sanitize middleware.
+ */
 export default expressMongoSanitize;
-
-export { ExpressMongoSanitizeError, expressMongoSanitize };
+export { expressMongoSanitize, paramSanitizeHandler };

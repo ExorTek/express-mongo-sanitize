@@ -1,5 +1,5 @@
 import type { Application } from 'express';
-import expressMongoSanitize, { ExpressMongoSanitizeOptions, ExpressMongoSanitizeError } from './index';
+import expressMongoSanitize, { ExpressMongoSanitizeOptions } from './';
 
 declare const app: Application;
 
@@ -7,11 +7,9 @@ app.use(expressMongoSanitize());
 
 app.use(
   expressMongoSanitize({
-    app,
-    routerBasePath: 'api',
     replaceWith: 'REDACTED',
     removeMatches: true,
-    sanitizeObjects: ['body', 'params', 'query'],
+    sanitizeObjects: ['body', 'query'],
     mode: 'auto',
     skipRoutes: ['login'],
     customSanitizer: (data, options) => data,
@@ -29,9 +27,11 @@ app.use(
       filterNull: true,
       distinct: true,
     },
+    debug: {
+      enabled: true,
+      level: 'info',
+    },
   } satisfies ExpressMongoSanitizeOptions)
 );
 
-new ExpressMongoSanitizeError('message', 'type');
-
-export { expressMongoSanitize, ExpressMongoSanitizeOptions, ExpressMongoSanitizeError };
+export { expressMongoSanitize, ExpressMongoSanitizeOptions };

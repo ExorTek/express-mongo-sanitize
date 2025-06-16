@@ -1,185 +1,269 @@
 # @exortek/express-mongo-sanitize
 
-A middleware designed for sanitizing incoming requests to an Express application, particularly when working with
-MongoDB (NoSQL). It ensures that certain patterns, such as special characters or malicious input, are removed or
-replaced from the request body, query, and parameters, preventing potential injection attacks in NoSQL.
+A comprehensive Express middleware designed to protect your No(n)SQL queries from injection attacks by sanitizing request data.  
+This middleware provides flexible sanitization options for request bodies and query strings, and an **optional handler for route parameters**.
 
-### Key Features
+## Compatibility
 
-- Automatic sanitization of potentially dangerous MongoDB operators and special characters.
-- Multiple operation modes (auto, manual)
-- Customizable sanitization patterns and replacement strategies
-- Support for nested objects and arrays
-- Configurable string and array handling options
-- Skip routes functionality
-- Custom sanitizer support
-- Email address preservation during sanitization
-- Option to remove matched patterns entirely
-- Enhanced security with request object cloning
+| Middleware version | Express version |
+|--------------------|:---------------:|
+| `^1.x`             |     `^4.x`      |
+| `^1.x`             |     `^5.x`      |
+
+## Features
+
+- Automatic sanitization of `req.body` and `req.query` by default
+- Supports deep/nested objects, arrays, and string transformation
+- Allows custom sanitizer logic, key allow/deny lists, skip routes, and more
+- **Route params (`req.params`) can be sanitized with an explicit helper** (see below)
+
+---
 
 ## Installation
 
-```bash
+```sh
+yarn add @exortek/express-mongo-sanitize
+# or
 npm install @exortek/express-mongo-sanitize
 ```
 
-OR
-
-```bash
-yarn add @exortek/express-mongo-sanitize
-```
+---
 
 ## Usage
 
-Register the middleware in your Express application before defining your routes.
+### Basic usage
 
-### App route example
-
-```javascript
-
+```js
 const express = require('express');
 const expressMongoSanitize = require('@exortek/express-mongo-sanitize');
 
 const app = express();
-
-app.use(exppress.json());
-
-// Register the middleware
-app.use(expressMongoSanitize());
-
-// Define your routes
-app.get('/users', (req, res) => {
-  // Your route logic here
-});
-
-app.post('/users', (req, res) => {
-  // Your route logic here
-});
-
-app.listen(3000, () => {
-  console.log('Server is running on port 3000');
-});
-
-```
-
-### Route-specific example
-
-```javascript
-
-const express = require('express');
-const expressMongoSanitize = require('@exortek/express-mongo-sanitize');
-const router = require('./router');
-
-const app = express();
-
 app.use(express.json());
 
-// Register the middleware
+// Body and query are sanitized automatically:
 app.use(expressMongoSanitize());
 
-// Define your routes
-app.use('/api', router);
-
-app.listen(3000, () => {
-  console.log('Server is running on port 3000');
+app.post('/submit', (req, res) => {
+  res.json(req.body);
 });
-
 ```
 
-# Configuration Options
+---
 
-The middleware accepts various configuration options to customize its behavior. Here's a detailed breakdown of all
-available
-options:
+### Sanitizing Route Params (`req.params`)
 
-## Core Options
+By default, only `body` and `query` are sanitized.  
+**If you want to sanitize route parameters (`req.params`),**  
+use the exported `paramSanitizeHandler` with Express's `app.param` or `router.param`:
 
-| Option            | Type           | Default                                            | Description                                                                                                                                                                                                                                                                               |
-|-------------------|----------------|----------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `app`             | Application    | `null`                                             | The Express app instance. Default is null. You can specify the app instance if you want to sanitize the params(Path variables) of the app.                                                                                                                                                |
-| `router`          | Router         | `null`                                             | The Express router instance. Default is null. You can specify the router instance if you want to sanitize the params(Path variables) of the router.                                                                                                                                       |
-| `routerBasePath`  | string         | `api`                                              | // The base path of the router. Default is an 'api'. You can specify the base path of the router.                                                                                                                                                                                         |
-| `replaceWith`     | string         | `''`                                               | The string to replace the matched patterns with. Default is an empty string. If you want to replace the matched patterns with a different string, you can set this option.                                                                                                                |
-| `removeMatches`   | boolean        | `false`                                            | Remove the matched patterns. Default is false. If you want to remove the matched patterns instead of replacing them, you can set this option to true.                                                                                                                                     |
-| `sanitizeObjects` | array          | `['body', 'params', 'query']`                      | The request properties to sanitize. Default is `['body', 'params', 'query']`. You can specify any request property that you want to sanitize. It must be an object.                                                                                                                       |
-| `mode`            | string         | `'auto'`                                           | The mode of operation. Default is 'auto'. You can set this option to 'auto', 'manual'. If you set it to 'auto', the plugin will automatically sanitize the request objects. If you set it to 'manual', you can sanitize the request objects manually using the request.sanitize() method. |
-| `skipRoutes`      | array          | `[]`                                               | An array of routes to skip. Default is an empty array. If you want to skip certain routes from sanitization, you can specify the routes here. The routes must be in the format `/path`. For example, `['/health', '/metrics']`.                                                           |
-| `customSanitizer` | function\|null | `null`                                             | A custom sanitizer function. Default is null. If you want to use a custom sanitizer function, you can specify it here. The function must accept two arguments: the original data and the options object. It must return the sanitized data.                                               |
-| `recursive`       | boolean        | `true`                                             | Enable recursive sanitization. Default is true. If you want to recursively sanitize the nested objects, you can set this option to true.                                                                                                                                                  |
-| `removeEmpty`     | boolean        | `false`                                            | Remove empty values. Default is false. If you want to remove empty values after sanitization, you can set this option to true.                                                                                                                                                            |
-| `patterns`        | array          | `PATTERNS`                                         | An array of patterns to match. Default is an array of patterns that match illegal characters and sequences. You can specify your own patterns if you want to match different characters or sequences. Each pattern must be a regular expression.                                          |
-| `allowedKeys`     | array\|null    | `null`                                             | An array of allowed keys. Default is null. If you want to allow only certain keys in the object, you can specify the keys here. The keys must be strings. If a key is not in the allowedKeys array, it will be removed.                                                                   |
-| `deniedKeys`      | array\|null    | `null`                                             | An array of denied keys. Default is null. If you want to deny certain keys in the object, you can specify the keys here. The keys must be strings. If a key is in the deniedKeys array, it will be removed.                                                                               |
-| `stringOptions`   | object         | `{ trim: false,lowercase: false,maxLength: null }` | An object that controls string sanitization behavior. Default is an empty object. You can specify the following options: `trim`, `lowercase`, `maxLength`.                                                                                                                                |
-| `arrayOptions`    | object         | `{ filterNull: false, distinct: false}`            | An object that controls array sanitization behavior. Default is an empty object. You can specify the following options: `filterNull`, `distinct`.                                                                                                                                         |    
+```js
+// Route parameter sanitization (recommended way):
+app.param('username', expressMongoSanitize.paramSanitizeHandler());
 
-## String Options
+// Example route:
+app.get('/user/:username', (req, res) => {
+  res.json({ username: req.params.username });
+});
+```
 
-The `stringOptions` object controls string sanitization behavior:
+**Note:**
+- You can attach this for any route param, e.g. `'id'`, `'slug'`, etc.
+- This gives you full control and doesn't require the middleware to know your routes.
 
-```javascript
+---
+
+## Options
+
+| Option            | Type     | Default                             | Description                                                         |
+|-------------------|----------|-------------------------------------|---------------------------------------------------------------------|
+| `replaceWith`     | string   | `''`                                | String to replace matched patterns                                  |
+| `removeMatches`   | boolean  | `false`                             | Remove values matching patterns entirely                            |
+| `sanitizeObjects` | string[] | `['body', 'query']`                 | List of request objects to sanitize                                 |
+| `mode`            | string   | `'auto'`                            | `'auto'` for automatic, `'manual'` for explicit req.sanitize() call |
+| `skipRoutes`      | string[] | `[]`                                | List of paths to skip (e.g. ['/health'])                            |
+| `customSanitizer` | function | `null`                              | Custom sanitizer function, overrides built-in sanitizer             |
+| `recursive`       | boolean  | `true`                              | Recursively sanitize nested values                                  |
+| `removeEmpty`     | boolean  | `false`                             | Remove empty values after sanitization                              |
+| `patterns`        | RegExp[] | See source code                     | Patterns to match for sanitization                                  |
+| `allowedKeys`     | string[] | `[]`                                | Only allow these keys (all if empty)                                |
+| `deniedKeys`      | string[] | `[]`                                | Remove these keys (none if empty)                                   |
+| `stringOptions`   | object   | See below                           | String transform options (trim, lowercase, maxLength)               |
+| `arrayOptions`    | object   | See below                           | Array handling options (filterNull, distinct)                       |
+| `debug`           | object   | `{ enabled: false, level: "info" }` | Enables debug logging for middleware internals.                     |
+
+
+#### `stringOptions` default:
+
+```js
 {
-  trim: false,      // Whether to trim whitespace from start/end
-  lowercase: false, // Whether to convert strings to lowercase
-  maxLength: null   // Maximum allowed string length (null for no limit)
+  trim: false,
+  lowercase: false,
+  maxLength: null
 }
 ```
 
-## Array Options
+#### `arrayOptions` default:
 
-The `arrayOptions` object controls array sanitization behavior:
-
-```javascript
+```js
 {
-  filterNull: false, // Whether to remove null/undefined values
-  distinct: false    // Whether to remove duplicate values
+  filterNull: false,
+  distinct: false
 }
 ```
 
-## Example Configuration
+---
 
-Here's an example of how you can configure the middleware with custom options:
+## Manual Mode
 
-```javascript
+If you set `mode: 'manual'`, the middleware will not sanitize automatically.  
+Call `req.sanitize()` manually in your route:
+
+```js
+app.use(expressMongoSanitize({ mode: 'manual' }));
+
+app.post('/manual', (req, res) => {
+  req.sanitize({ replaceWith: '_' }); // custom options are supported here
+  res.json(req.body);
+});
+```
+
+---
+
+## Skipping Routes
+
+Skip certain routes by adding their paths to `skipRoutes`:
+
+```js
+app.use(expressMongoSanitize({ skipRoutes: ['/skip', '/status'] }));
+
+// These routes will NOT be sanitized
+```
+
+---
+
+## Custom Sanitizer
+
+Use a completely custom sanitizer function:
+
+```js
 app.use(expressMongoSanitize({
-    app: app,
-    router: router,
-    routerBasePath: 'api',
-    replaceWith: 'REPLACED',
-    removeMatches: false,
-    sanitizeObjects: ['body', 'params', 'query'],
-    mode: 'auto',
-    skipRoutes: ['/health', '/metrics'],
-    customSanitizer: (data, options) => {
-      // Custom sanitizer logic here
-      return data;
-    },
-    recursive: true,
-    removeEmpty: false,
-    patterns: [/pattern1/, /pattern2/],
-    allowedKeys: ['key1', 'key2'],
-    deniedKeys: ['key3', 'key4'],
-    stringOptions: {
-      trim: true,
-      lowercase: true,
-      maxLength: 100
-    },
-    arrayOptions: {
-      filterNull: true,
-      distinct: true
-    }
+  customSanitizer: (data, options) => {
+    // Your custom logic
+    return data;
+  }
 }));
 ```
 
-## Notes
+---
 
-- The middleware is designed to work with Express applications and is not compatible with other frameworks.
-- If the app or router instances are not provided to the `@exortek/express-mongo-sanitize` middleware, the route parameters (path variables) cannot be sanitized. The middleware will skip sanitizing the route parameters and display a warning message indicating that sanitization was not performed for the path variables. Ensure that both the app and router instances are properly passed to the middleware to enable route parameter sanitization.
-- All options are optional and will use their default values if not specified.
-- Custom patterns must be valid RegExp objects
+## Route Parameter Sanitization
+
+> By default, only `body` and `query` are sanitized.
+> If you want to sanitize route parameters (`req.params`),  
+> use the helper function with `app.param` or `router.param`:
+>
+> ```js
+> app.param('username', expressMongoSanitize.paramSanitizeHandler());
+> ```
+>
+> This ensures that, for example, `/user/$admin` will be returned as `{ username: 'admin' }`  
+> in your handler.
+
+---
+
+## TypeScript
+
+Type definitions are included.  
+You can use this plugin in both CommonJS and ESM projects.
+
+---
+
+## Advanced Usage
+
+### Custom Sanitizer per Route
+
+You can override sanitizer options or use a completely custom sanitizer per route:
+
+```js
+app.post('/profile', (req, res, next) => {
+  req.sanitize({
+    customSanitizer: (data) => {
+      // For example, redact all strings:
+      if (typeof data === 'string') return '[REDACTED]';
+      return data;
+    }
+  });
+  res.json(req.body);
+});
+```
+## Debugging & Logging
+
+You can enable debug logs to see the internal operation of the middleware.  
+Useful for troubleshooting or when tuning sanitization behavior.
+
+```js
+app.use(
+  expressMongoSanitize({
+    debug: {
+      enabled: true,         // Turn on debug logs
+      level: 'debug',        // Log level: 'error' | 'warn' | 'info' | 'debug' | 'trace'
+      logSkippedRoutes: true // (optional) Log when routes are skipped
+    },
+    // ...other options
+  })
+);
+```
+### Logging Levels
+| Level   | Description                          |
+|---------|--------------------------------------|
+| `error` | Logs only errors                     |
+| `warn`  | Logs warnings and errors             |
+| `info`  | Logs informational messages          |
+| `debug` | Logs detailed debug information      |
+| `trace` | Logs very detailed trace information |
+
+### Using with Router
+
+```js
+const router = express.Router();
+router.use(expressMongoSanitize());
+// You can use paramSanitizeHandler on router params as well:
+router.param('userId', expressMongoSanitize.paramSanitizeHandler());
+```
+
+---
+
+## Troubleshooting
+
+### Route parameters are not being sanitized
+
+By default, only `body` and `query` are sanitized.  
+To sanitize route parameters, use:
+
+```js
+app.param('username', expressMongoSanitize.paramSanitizeHandler());
+```
+
+### Skipping specific routes doesn't work as expected
+
+Make sure you use the exact path as in your route definition,  
+and that you apply the middleware before your routes.
+
+---
+
+### My request is not being sanitized
+
+- Ensure your route handler is after the middleware in the stack.
+- If you are using `mode: 'manual'`, you **must** call `req.sanitize()` yourself.
+
+---
+
+For more troubleshooting, open an issue at [Github Issues](https://github.com/ExorTek/express-mongo-sanitize/issues)
+
+---
 
 ## License
 
 **[MIT](https://github.com/ExorTek/express-mongo-sanitize/blob/master/LICENSE)**<br>
 
-Copyright © 2024 ExorTek
+Copyright © 2025 ExorTek
