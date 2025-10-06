@@ -405,6 +405,32 @@ for (const version of expressVersions) {
     assert.deepStrictEqual(data, { foo: 'SAFE', arr: ['SAFE', 'SAFE'] });
     server.close();
   });
+
+  test(`[${version.name}] should sanitize query`, async () => {
+    const app = version.app();
+    app.use(express.json());
+    app.use(expressMongoSanitize());
+
+    app.get('/', (req, res) => {
+      console.log(req.query);
+      res.json(req.query);
+    });
+
+    const server = app.listen(0);
+    const port = server.address().port;
+
+    const response = await fetch(`http://localhost:${port}/?username=$admin&role=$super`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const data = await response.json();
+
+    assert.strictEqual(response.status, 200);
+    assert.deepStrictEqual(data, { username: 'admin', role: 'super' });
+
+    server.close();
+  });
 }
 
 after(() => {

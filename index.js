@@ -143,7 +143,7 @@ const isPlainObject = (obj) => !!obj && Object.prototype.toString.call(obj) === 
  */
 const isObjectEmpty = (obj) => {
   if (!isPlainObject(obj)) return false;
-  return !Object.hasOwn(obj, Object.keys(obj)[0]);
+  return !Object.keys(obj).length;
 };
 
 /**
@@ -179,6 +179,9 @@ const isFunction = (value) => typeof value === 'function';
  * @extends Error
  */
 class ExpressMongoSanitizeError extends Error {
+  cause;
+  message;
+  stack;
   /**
    * Creates a new ExpressMongoSanitizeError.
    * @param {string} message - Error message
@@ -189,6 +192,14 @@ class ExpressMongoSanitizeError extends Error {
     this.name = 'ExpressMongoSanitizeError';
     this.type = type;
     Error.captureStackTrace(this, this.constructor);
+  }
+
+  code() {
+    return this.type;
+  }
+
+  view() {
+    return `${this.name} [${this.type}]: ${this.message}\n${this.stack}`;
   }
 }
 
@@ -371,9 +382,13 @@ const handleRequest = (request, options) => {
       }
       if (isWritable(request, sanitizeObject)) {
         request[sanitizeObject] = sanitized;
-      } else if (typeof request[sanitizeObject] === 'object' && request[sanitizeObject] !== null) {
-        Object.keys(request[sanitizeObject]).forEach((k) => delete request[sanitizeObject][k]);
-        Object.assign(request[sanitizeObject], sanitized);
+      } else if (isPlainObject(request[sanitizeObject]) && sanitizeObject === 'query') {
+        Object.defineProperty(request, 'query', {
+          value: Object.setPrototypeOf(sanitized, null),
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
       }
     }
   });
